@@ -1,0 +1,48 @@
+name: Build and Push to Artifact Registry
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: hans-home
+  REGION: northamerica-northeast2
+  GAR_LOCATION: northamerica-northeast2-docker.pkg.dev/hans-home/docker/watch-workout-importer
+
+jobs:
+  build-push-artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: Set up GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: 21
+          distribution: graalvm-community
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Native Runner
+        run: |-
+          ./gradlew build -Dquarkus.native.enabled=true -Dquarkus.native.container-build=true -Dquarkus.native.container-runtime=docker -Dquarkus.package.jar.enabled=false
+
+      - id: "auth"
+        uses: "google-github-actions/auth@v2"
+        with:
+          credentials_json: "${{ secrets.SA_ACCOUNT_KEY }}"
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
+      - name: "Use gcloud CLI"
+        run: "gcloud info"
+
+      - name: "Docker Auth"
+        run: |-
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+      - name: "Build image"
+        run: docker build . --file src/main/docker/Dockerfile.native-micro --tag ${{ env.GAR_LOCATION }}
+      - name: Push image
+        run: docker push ${{ env.GAR_LOCATION }}
