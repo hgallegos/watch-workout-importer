@@ -1,0 +1,6 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    script: |
+      docker build -f src/main/docker/Dockerfile.native-micro -t us-central1-docker.pkg.dev/${PROJECT_ID}/docker-repo/watch-workout-importer .
+images:
+  - 'us-central1-docker.pkg.dev/${PROJECT_ID}/docker-repo/watch-workout-importer'
